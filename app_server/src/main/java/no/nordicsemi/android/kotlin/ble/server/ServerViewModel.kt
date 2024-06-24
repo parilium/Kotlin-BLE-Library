@@ -45,12 +45,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import no.nordicsemi.android.common.navigation.DestinationId
+import no.nordicsemi.android.common.navigation.Navigator
 import no.nordicsemi.android.kotlin.ble.core.data.util.DataByteArray
 import no.nordicsemi.android.kotlin.ble.advertiser.BleAdvertiser
 import no.nordicsemi.android.kotlin.ble.advertiser.callback.OnAdvertisingSetStarted
@@ -69,13 +70,15 @@ import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattService
 import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattServiceType
 import java.util.*
 import javax.inject.Inject
+import no.nordicsemi.android.hrs.service.HRSRepository
+import no.nordicsemi.android.kotlin.ble.profile.hrs.HRSDataParser
 
-object BlinkySpecifications {
-    /** Nordic Blinky Service UUID. */
-    val UUID_SERVICE_DEVICE: UUID = UUID.fromString("00001523-1212-efde-1523-785feabcd123")
+object HRSeverSpecifications {
+    /** HR Service UUID. */
+    val HRS_SERVICE_UUID: UUID = UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb")
 
-    /** LED characteristic UUID. */
-    val UUID_LED_CHAR: UUID = UUID.fromString("00001525-1212-efde-1523-785feabcd123")
+    /** HR measurement characteristic UUID. */
+    val HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A37-0000-1000-8000-00805f9b34fb")
 
     /** BUTTON characteristic UUID. */
     val UUID_BUTTON_CHAR: UUID = UUID.fromString("00001524-1212-efde-1523-785feabcd123")
@@ -83,47 +86,66 @@ object BlinkySpecifications {
 
 data class ServerState(
     val isAdvertising: Boolean = false,
-    val isLedOn: Boolean = false,
+    val beatsPerMin: Int = 60,
     val isButtonPressed: Boolean = false,
-)
+    val isHRSModuleRunning: Boolean = false,
+    val refreshToggle: Boolean = false
+) {
+
+    fun copyWithRefresh(): ServerState {
+        return copy(refreshToggle = !refreshToggle)
+    }
+}
 
 @SuppressLint("MissingPermission")
 @HiltViewModel
 class ServerViewModel @Inject constructor(
     @ApplicationContext
     private val context: Context,
+    private val navigationManager: Navigator,
+    hrsRepository: HRSRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ServerState())
     val state = _state.asStateFlow()
 
-    private var ledCharacteristic: ServerBleGattCharacteristic? = null
+    init {
+        hrsRepository.isRunning.onEach {
+            _state.value = _state.value.copy(isHRSModuleRunning = it)
+        }.launchIn(viewModelScope)
+    }
+
+    fun openProfile(destination: DestinationId<Unit, Unit>) {
+        navigationManager.navigateTo(destination)
+    }
+
+    private var heartRateMeasurementCharacteristic: ServerBleGattCharacteristic? = null
     private var buttonCharacteristic: ServerBleGattCharacteristic? = null
 
     private var advertisementJob: Job? = null
 
     fun advertise() {
         advertisementJob = viewModelScope.launch {
-            //Define led characteristic
-            val ledCharacteristic = ServerBleGattCharacteristicConfig(
-                BlinkySpecifications.UUID_LED_CHAR,
-                listOf(BleGattProperty.PROPERTY_READ, BleGattProperty.PROPERTY_WRITE),
-                listOf(BleGattPermission.PERMISSION_READ, BleGattPermission.PERMISSION_WRITE),
+            //Define hr measurement characteristic
+            val heartRateMeasurementCharacteristic = ServerBleGattCharacteristicConfig(
+                HRSeverSpecifications.HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID,
+                listOf(BleGattProperty.PROPERTY_NOTIFY),
+                listOf(BleGattPermission.PERMISSION_READ),
                 initialValue = DataByteArray.from(0x01)
             )
 
             //Define button characteristic
             val buttonCharacteristic = ServerBleGattCharacteristicConfig(
-                BlinkySpecifications.UUID_BUTTON_CHAR,
+                HRSeverSpecifications.UUID_BUTTON_CHAR,
                 listOf(BleGattProperty.PROPERTY_READ, BleGattProperty.PROPERTY_NOTIFY),
                 listOf(BleGattPermission.PERMISSION_READ, BleGattPermission.PERMISSION_WRITE)
             )
 
-            //Put led and button characteristics inside a service
+            //Put hr measurement and button characteristics inside a service
             val serviceConfig = ServerBleGattServiceConfig(
-                BlinkySpecifications.UUID_SERVICE_DEVICE,
+                HRSeverSpecifications.HRS_SERVICE_UUID,
                 ServerBleGattServiceType.SERVICE_TYPE_PRIMARY,
-                listOf(ledCharacteristic, buttonCharacteristic)
+                listOf(heartRateMeasurementCharacteristic, buttonCharacteristic)
             )
 
             val server = ServerBleGatt.create(context, viewModelScope, serviceConfig)
@@ -131,12 +153,12 @@ class ServerViewModel @Inject constructor(
             val advertiser = BleAdvertiser.create(context)
             val advertiserConfig = BleAdvertisingConfig(
                 settings = BleAdvertisingSettings(
-                    deviceName = "a", // Advertise a device name,
+                    deviceName = "HR-Relay", // Advertise a device name,
                     legacyMode = true,
                     scannable = true
                 ),
                 advertiseData = BleAdvertisingData(
-                    ParcelUuid(BlinkySpecifications.UUID_SERVICE_DEVICE), //Advertise main service uuid.
+                    ParcelUuid(HRSeverSpecifications.HRS_SERVICE_UUID), //Advertise main service uuid.
                     includeDeviceName = true,
                 )
             )
@@ -158,7 +180,7 @@ class ServerViewModel @Inject constructor(
                 .mapNotNull { it as? ServerConnectionEvent.DeviceConnected }
                 .map { it.connection }
                 .onEach {
-                    it.services.findService(BlinkySpecifications.UUID_SERVICE_DEVICE)?.let {
+                    it.services.findService(HRSeverSpecifications.HRS_SERVICE_UUID)?.let {
                         setUpServices(it)
                     }
                 }.launchIn(viewModelScope)
@@ -171,19 +193,24 @@ class ServerViewModel @Inject constructor(
     }
 
     private fun setUpServices(services: ServerBleGattService) {
-        val ledCharacteristic = services.findCharacteristic(BlinkySpecifications.UUID_LED_CHAR)!!
-        val buttonCharacteristic = services.findCharacteristic(BlinkySpecifications.UUID_BUTTON_CHAR)!!
+        val heartRateMeasurementCharacteristic = services.findCharacteristic(HRSeverSpecifications.HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID)!!
+        val buttonCharacteristic = services.findCharacteristic(HRSeverSpecifications.UUID_BUTTON_CHAR)!!
 
-        ledCharacteristic.value.onEach {
-            _state.value = _state.value.copy(isLedOn = it != DataByteArray.from(0x00))
+        //notifyHRSData(DataByteArray.from(99))
+        heartRateMeasurementCharacteristic.value.onEach {
+            _state.value = _state.value.copy(beatsPerMin = HRSDataParser.parse(it).heartRate)
         }.launchIn(viewModelScope)
 
         buttonCharacteristic.value.onEach {
             _state.value = _state.value.copy(isButtonPressed = it != DataByteArray.from(0x00))
         }.launchIn(viewModelScope)
 
-        this.ledCharacteristic = ledCharacteristic
+        this.heartRateMeasurementCharacteristic = heartRateMeasurementCharacteristic
         this.buttonCharacteristic = buttonCharacteristic
+    }
+
+    suspend fun notifyHRSMeasurement(hrsMeasurement: DataByteArray) {
+        heartRateMeasurementCharacteristic?.setValueAndNotifyClient(hrsMeasurement)
     }
 
     fun onButtonPressedChanged(isButtonPressed: Boolean) = viewModelScope.launch {

@@ -34,6 +34,7 @@ package no.nordicsemi.android.kotlin.ble.server
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import no.nordicsemi.android.common.navigation.NavigationView
 import no.nordicsemi.android.common.permissions.ble.RequireBluetooth
 import no.nordicsemi.android.common.permissions.ble.RequireLocation
 import no.nordicsemi.android.common.theme.view.NordicAppBar
@@ -67,6 +69,18 @@ fun MainScreen() {
                     val state by viewModel.state.collectAsStateWithLifecycle()
 
                     Column {
+                        Spacer(modifier = Modifier.size(16.dp))
+
+                        FeatureButton(
+                            R.drawable.ic_hrs,
+                            R.string.hrs_module,
+                            R.string.hrs_module_full,
+                            state.isHRSModuleRunning
+                        ) {
+                            viewModel.openProfile(HRSDestinationId)
+                            //viewModel.logEvent(ProfileOpenEvent(Profile.HRS))
+                        }
+
                         Spacer(modifier = Modifier.size(16.dp))
 
                         AdvertiseView(state = state, viewModel = viewModel)

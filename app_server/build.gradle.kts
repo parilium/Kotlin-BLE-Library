@@ -43,8 +43,11 @@ android {
 dependencies {
     implementation(project(":advertiser"))
     implementation(project(":scanner"))
+    implementation(project(":uiscanner"))
     implementation(project(":server"))
     implementation(project(":core"))
+    implementation(project(":profile_hrs"))
+    implementation(project(":profile"))
 
     implementation(libs.nordic.theme)
     implementation(libs.nordic.navigation)

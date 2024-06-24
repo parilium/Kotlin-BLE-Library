@@ -41,7 +41,7 @@ fun StateView(state: ServerState, viewModel: ServerViewModel) {
 
             Spacer(modifier = Modifier.size(16.dp))
 
-            val color = if (state.isLedOn) {
+            val color = if (state.beatsPerMin!=10) {
                 colorResource(id = R.color.yellow)
             } else {
                 colorResource(id = R.color.gray)
@@ -58,7 +58,7 @@ fun StateView(state: ServerState, viewModel: ServerViewModel) {
                 Spacer(modifier = Modifier.size(16.dp))
 
                 Text(
-                    text = stringResource(id = R.string.led_state, state.isLedOn.toDisplayString()),
+                    text = stringResource(id = R.string.led_state, state.beatsPerMin),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }

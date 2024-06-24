@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
+import no.nordicsemi.android.common.navigation.NavigationView
 import no.nordicsemi.android.common.theme.NordicActivity
 import no.nordicsemi.android.common.theme.NordicTheme
 
@@ -48,7 +49,8 @@ class MainActivity : NordicActivity() {
         setContent {
             NordicTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainScreen()
+                    NavigationView(MainScreenDestinations + HRSDestination + ScannerDestination)
+                   // MainScreen()
                 }
             }
         }

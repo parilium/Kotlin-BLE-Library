@@ -47,7 +47,7 @@ dependencyResolutionManagement {
         maven(url = "https://jitpack.io")
     }
 }
-rootProject.name = "Kotlin-BLE-Library"
+rootProject.name = "BLE-HR-Relay"
 
 include(":app_server")
 include(":app_client")
@@ -55,6 +55,7 @@ include(":advertiser")
 include(":scanner")
 include(":core")
 include(":profile")
+include(":profile_hrs")
 include(":server-api")
 include(":server-android")
 include(":server")
@@ -67,6 +68,12 @@ include(":mock")
 include(":test")
 include(":logger")
 include(":uiscanner")
+
+include(":lib_analytics")
+include(":lib_scanner")
+include(":lib_service")
+include(":lib_ui")
+include(":lib_utils")
 
 //if (file("../Android-Common-Libraries").exists()) {
 //    includeBuild("../Android-Common-Libraries")

@@ -60,5 +60,6 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":app_server"))
     implementation(libs.androidx.annotation)
 }
