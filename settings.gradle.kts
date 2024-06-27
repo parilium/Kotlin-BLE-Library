@@ -47,9 +47,9 @@ dependencyResolutionManagement {
         maven(url = "https://jitpack.io")
     }
 }
-rootProject.name = "BLE-HR-Relay"
+rootProject.name = "HRS-Relay-app"
 
-include(":app_server")
+include(":HRS-Relay-app")
 include(":app_client")
 include(":advertiser")
 include(":scanner")

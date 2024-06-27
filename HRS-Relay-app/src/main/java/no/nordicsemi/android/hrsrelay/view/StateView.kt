@@ -1,4 +1,4 @@
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay.view
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -25,10 +25,12 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import no.nordicsemi.android.common.theme.view.SectionTitle
-import no.nordicsemi.android.kotlin.ble.app.server.R
+import no.nordicsemi.android.hrsrelay.service.ServerState
+import no.nordicsemi.android.hrsrelay.viewmodel.MainViewModel
+import no.nordicsemi.android.hrsrelay.R
 
 @Composable
-fun StateView(state: ServerState, viewModel: ServerViewModel) {
+fun StateView(state: ServerState, viewModel: MainViewModel) {
     OutlinedCard(modifier = Modifier.padding(horizontal = 16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             SectionTitle(
@@ -41,7 +43,7 @@ fun StateView(state: ServerState, viewModel: ServerViewModel) {
 
             Spacer(modifier = Modifier.size(16.dp))
 
-            val color = if (state.beatsPerMin!=10) {
+            val color = if (60!=10) {
                 colorResource(id = R.color.yellow)
             } else {
                 colorResource(id = R.color.gray)
@@ -58,7 +60,8 @@ fun StateView(state: ServerState, viewModel: ServerViewModel) {
                 Spacer(modifier = Modifier.size(16.dp))
 
                 Text(
-                    text = stringResource(id = R.string.led_state, state.beatsPerMin),
+                    //text = stringResource(id = R.string.led_state, state.beatsPerMin),
+                    "test",
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -88,9 +91,6 @@ fun StateView(state: ServerState, viewModel: ServerViewModel) {
                 }
             }
 
-            LaunchedEffect(isPressed) {
-                viewModel.onButtonPressedChanged(isPressed)
-            }
         }
     }
 }

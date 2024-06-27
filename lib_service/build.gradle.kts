@@ -43,8 +43,6 @@ dependencies {
     implementation(project(":uiscanner"))
     implementation(project(":core"))
 
-    //implementation(libs.nordic.blek.uiscanner)
-    //implementation(libs.nordic.blek.core)
 
     implementation(libs.androidx.lifecycle.service)
     implementation(libs.androidx.localbroadcastmanager)

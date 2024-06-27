@@ -29,20 +29,19 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay.viewmodel
 
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
@@ -68,10 +67,10 @@ import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattCharact
 import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattService
 import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattServiceConfig
 import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattServiceType
+import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattDescriptorConfig
 import java.util.*
 import javax.inject.Inject
-import no.nordicsemi.android.hrs.service.HRSRepository
-import no.nordicsemi.android.kotlin.ble.profile.hrs.HRSDataParser
+import no.nordicsemi.android.hrsrelay.service.HRSRepository
 
 object HRSeverSpecifications {
     /** HR Service UUID. */
@@ -80,72 +79,55 @@ object HRSeverSpecifications {
     /** HR measurement characteristic UUID. */
     val HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID: UUID = UUID.fromString("00002A37-0000-1000-8000-00805f9b34fb")
 
-    /** BUTTON characteristic UUID. */
-    val UUID_BUTTON_CHAR: UUID = UUID.fromString("00001524-1212-efde-1523-785feabcd123")
+    val HR_MEASUREMENT_CLIENT_CHARACTERISTIC_CONFIGURATOR_DESCRIPTOR_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
 }
 
-data class ServerState(
-    val isAdvertising: Boolean = false,
-    val beatsPerMin: Int = 60,
-    val isButtonPressed: Boolean = false,
-    val isHRSModuleRunning: Boolean = false,
-    val refreshToggle: Boolean = false
-) {
-
-    fun copyWithRefresh(): ServerState {
-        return copy(refreshToggle = !refreshToggle)
-    }
-}
 
 @SuppressLint("MissingPermission")
 @HiltViewModel
-class ServerViewModel @Inject constructor(
+class MainViewModel @Inject constructor(
     @ApplicationContext
     private val context: Context,
     private val navigationManager: Navigator,
-    hrsRepository: HRSRepository
+    private val repository: HRSRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ServerState())
-    val state = _state.asStateFlow()
+    //private val _state = MutableStateFlow(ServerState())
+    //val state = _state.asStateFlow()
+    internal val stateHrsClient = repository.hrsClientData
+    internal val stateHrsServer = repository.hrsServerData
 
-    init {
-        hrsRepository.isRunning.onEach {
-            _state.value = _state.value.copy(isHRSModuleRunning = it)
-        }.launchIn(viewModelScope)
-    }
+
+    //private val _device = MutableStateFlow<ServerDevice?>(null)
+    //val device = _device.asStateFlow()
 
     fun openProfile(destination: DestinationId<Unit, Unit>) {
         navigationManager.navigateTo(destination)
     }
 
     private var heartRateMeasurementCharacteristic: ServerBleGattCharacteristic? = null
-    private var buttonCharacteristic: ServerBleGattCharacteristic? = null
 
     private var advertisementJob: Job? = null
 
     fun advertise() {
+
         advertisementJob = viewModelScope.launch {
             //Define hr measurement characteristic
             val heartRateMeasurementCharacteristic = ServerBleGattCharacteristicConfig(
                 HRSeverSpecifications.HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID,
                 listOf(BleGattProperty.PROPERTY_NOTIFY),
-                listOf(BleGattPermission.PERMISSION_READ),
-                initialValue = DataByteArray.from(0x01)
-            )
-
-            //Define button characteristic
-            val buttonCharacteristic = ServerBleGattCharacteristicConfig(
-                HRSeverSpecifications.UUID_BUTTON_CHAR,
-                listOf(BleGattProperty.PROPERTY_READ, BleGattProperty.PROPERTY_NOTIFY),
-                listOf(BleGattPermission.PERMISSION_READ, BleGattPermission.PERMISSION_WRITE)
+                emptyList()
+//                listOf(ServerBleGattDescriptorConfig(HRSeverSpecifications.HR_MEASUREMENT_CLIENT_CHARACTERISTIC_CONFIGURATOR_DESCRIPTOR_UUID,
+//                    listOf(BleGattPermission.PERMISSION_READ, BleGattPermission.PERMISSION_WRITE)))
+                //initialValue = DataByteArray.from(0x01)
             )
 
             //Put hr measurement and button characteristics inside a service
             val serviceConfig = ServerBleGattServiceConfig(
                 HRSeverSpecifications.HRS_SERVICE_UUID,
                 ServerBleGattServiceType.SERVICE_TYPE_PRIMARY,
-                listOf(heartRateMeasurementCharacteristic, buttonCharacteristic)
+                listOf(heartRateMeasurementCharacteristic)
             )
 
             val server = ServerBleGatt.create(context, viewModelScope, serviceConfig)
@@ -169,10 +151,12 @@ class ServerViewModel @Inject constructor(
                 .onEach { Log.d("ADVERTISER", "New event: $it") }
                 .onEach { //Observe advertiser lifecycle events
                     if (it is OnAdvertisingSetStarted) { //Handle advertising start event
-                        _state.value = _state.value.copy(isAdvertising = true)
+                        repository.setAdvertising(true)
+                        //_state.value = _state.value.copy(isAdvertising = true)
                     }
                     if (it is OnAdvertisingSetStopped) { //Handle advertising top event
-                        _state.value = _state.value.copy(isAdvertising = false)
+                        repository.setAdvertising(false)
+                        //_state.value = _state.value.copy(isAdvertising = false)
                     }
                 }.launchIn(viewModelScope)
 
@@ -189,36 +173,23 @@ class ServerViewModel @Inject constructor(
 
     fun stopAdvertise() {
         advertisementJob?.cancelChildren()
-        _state.value = _state.value.copy(isAdvertising = false)
+        repository.setAdvertising(false)
+        //_state.value = _state.value.copy(isAdvertising = false)
     }
 
     private fun setUpServices(services: ServerBleGattService) {
         val heartRateMeasurementCharacteristic = services.findCharacteristic(HRSeverSpecifications.HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID)!!
-        val buttonCharacteristic = services.findCharacteristic(HRSeverSpecifications.UUID_BUTTON_CHAR)!!
 
-        //notifyHRSData(DataByteArray.from(99))
-        heartRateMeasurementCharacteristic.value.onEach {
-            _state.value = _state.value.copy(beatsPerMin = HRSDataParser.parse(it).heartRate)
-        }.launchIn(viewModelScope)
-
-        buttonCharacteristic.value.onEach {
-            _state.value = _state.value.copy(isButtonPressed = it != DataByteArray.from(0x00))
+        repository.hrsMeasurementBytes.onEach {
+            heartRateMeasurementCharacteristic.setValueAndNotifyClient(it)
         }.launchIn(viewModelScope)
 
         this.heartRateMeasurementCharacteristic = heartRateMeasurementCharacteristic
-        this.buttonCharacteristic = buttonCharacteristic
+
     }
 
     suspend fun notifyHRSMeasurement(hrsMeasurement: DataByteArray) {
         heartRateMeasurementCharacteristic?.setValueAndNotifyClient(hrsMeasurement)
     }
 
-    fun onButtonPressedChanged(isButtonPressed: Boolean) = viewModelScope.launch {
-        val value = if (isButtonPressed) {
-            DataByteArray.from(0x01)
-        } else {
-            DataByteArray.from(0x00)
-        }
-        buttonCharacteristic?.setValueAndNotifyClient(value)
-    }
 }

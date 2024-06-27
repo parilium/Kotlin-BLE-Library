@@ -29,30 +29,27 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay.service
 
-import android.os.Bundle
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
-import dagger.hilt.android.AndroidEntryPoint
-import no.nordicsemi.android.common.navigation.NavigationView
-import no.nordicsemi.android.common.theme.NordicActivity
-import no.nordicsemi.android.common.theme.NordicTheme
+import no.nordicsemi.android.kotlin.ble.core.data.BleGattConnectionStatus
+import no.nordicsemi.android.kotlin.ble.core.data.GattConnectionStateWithStatus
+import no.nordicsemi.android.kotlin.ble.profile.hrs.data.HRSData
 
-@AndroidEntryPoint
-class MainActivity : NordicActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+internal data class HRSClientState(
+    val measurementData: List<HRSData> = emptyList(),
+    val bodySensorLocation: Int? = null,
+    val batteryLevel: Int? = null,
+    val connectionState: GattConnectionStateWithStatus? = null,
+    val zoomIn: Boolean = false,
+    val deviceName: String? = null,
+    val missingServices: Boolean = false
+) {
 
-        setContent {
-            NordicTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    NavigationView(MainScreenDestinations + HRSDestination + ScannerDestination)
-                   // MainScreen()
-                }
-            }
-        }
+    val disconnectStatus = if (missingServices) {
+        BleGattConnectionStatus.NOT_SUPPORTED
+    } else {
+        connectionState?.status ?: BleGattConnectionStatus.UNKNOWN
     }
+
+    val heartRates = measurementData.map { it.heartRate }
 }

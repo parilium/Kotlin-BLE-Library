@@ -34,10 +34,10 @@ plugins {
     alias(libs.plugins.nordic.hilt)
 }
 
-group = "no.nordicsemi.android.kotlin.ble"
+group = "no.nordicsemi.android.hrsrelay"
 
 android {
-    namespace = "no.nordicsemi.android.kotlin.ble.app.server"
+    namespace = "no.nordicsemi.android.hrsrelay"
 }
 
 dependencies {
@@ -45,10 +45,16 @@ dependencies {
     implementation(project(":scanner"))
     implementation(project(":uiscanner"))
     implementation(project(":server"))
+    implementation(project(":client"))
     implementation(project(":core"))
-    implementation(project(":profile_hrs"))
     implementation(project(":profile"))
+    implementation(project(":lib_service"))
+    implementation(project(":lib_ui"))
+    implementation(project(":lib_analytics"))
+    implementation(project(":lib_scanner"))
+    implementation(project(":lib_utils"))
 
+    implementation(libs.nordic.core)
     implementation(libs.nordic.theme)
     implementation(libs.nordic.navigation)
     implementation(libs.nordic.permissions.ble)
@@ -63,4 +69,7 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.service)
+
+    implementation(libs.chart)
 }

@@ -53,9 +53,6 @@ dependencies {
     implementation(libs.nordic.navigation)
     implementation(libs.nordic.logger)
 
-    //implementation(libs.nordic.blek.client)
-    //implementation(libs.nordic.blek.profile)
-    //implementation(libs.nordic.blek.uiscanner)
 
     implementation(libs.chart)
 

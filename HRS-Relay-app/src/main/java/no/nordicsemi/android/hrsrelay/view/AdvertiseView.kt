@@ -1,4 +1,4 @@
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay.view
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,10 +19,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import no.nordicsemi.android.common.theme.view.SectionTitle
-import no.nordicsemi.android.kotlin.ble.app.server.R
+import no.nordicsemi.android.hrsrelay.service.ServerState
+import no.nordicsemi.android.hrsrelay.viewmodel.MainViewModel
+import no.nordicsemi.android.hrsrelay.R
 
 @Composable
-fun AdvertiseView(state: ServerState, viewModel: ServerViewModel) {
+fun AdvertiseView(state: ServerState, viewModel: MainViewModel) {
     OutlinedCard(modifier = Modifier.padding(horizontal = 16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             SectionTitle(

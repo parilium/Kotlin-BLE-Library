@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Nordic Semiconductor
+ * Copyright (c) 2022, Nordic Semiconductor
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification, are
@@ -29,37 +29,14 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-plugins {
-    alias(libs.plugins.nordic.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.nordic.nexus)
-    alias(libs.plugins.nordic.kotlin)
-    alias(libs.plugins.kotlin.parcelize)
-}
+package no.nordicsemi.android.hrsrelay.hrsclient.view
 
-group = "no.nordicsemi.android.kotlin.ble"
+internal sealed class HRSScreenViewEvent
 
-nordicNexusPublishing {
-    POM_ARTIFACT_ID = "profile"
-    POM_NAME = "Nordic Kotlin library for BLE profiles"
+internal object SwitchZoomEvent : HRSScreenViewEvent()
 
-    POM_DESCRIPTION = "Nordic Android Kotlin BLE library"
-    POM_URL = "https://github.com/NordicPlayground/Kotlin-BLE-Library"
-    POM_SCM_URL = "https://github.com/NordicPlayground/Kotlin-BLE-Library"
-    POM_SCM_CONNECTION = "scm:git@github.com:NordicPlayground/Kotlin-BLE-Library.git"
-    POM_SCM_DEV_CONNECTION = "scm:git@github.com:NordicPlayground/Kotlin-BLE-Library.git"
+internal object DisconnectEvent : HRSScreenViewEvent()
 
-    POM_DEVELOPER_ID = "syzi"
-    POM_DEVELOPER_NAME = "Sylwester Zieliński"
-    POM_DEVELOPER_EMAIL = "sylwester.zielinski@nordicsemi.no"
-}
+internal object NavigateUpEvent : HRSScreenViewEvent()
 
-android {
-    namespace = "no.nordicsemi.android.kotlin.ble.profile"
-}
-
-dependencies {
-    implementation(project(":core"))
-
-    implementation(libs.androidx.annotation)
-}
+internal object OpenLoggerEvent : HRSScreenViewEvent()

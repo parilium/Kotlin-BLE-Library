@@ -29,7 +29,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay
 
 import android.os.ParcelUuid
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -37,7 +37,8 @@ import no.nordicsemi.android.common.navigation.createDestination
 import no.nordicsemi.android.common.navigation.createSimpleDestination
 import no.nordicsemi.android.common.navigation.defineDestination
 import no.nordicsemi.android.common.navigation.viewmodel.SimpleNavigationViewModel
-import no.nordicsemi.android.hrs.view.HRSScreen
+import no.nordicsemi.android.hrsrelay.hrsclient.view.HRSClientScreen
+import no.nordicsemi.android.hrsrelay.view.MainScreen
 import no.nordicsemi.android.kotlin.ble.core.ServerDevice
 import no.nordicsemi.android.kotlin.ble.ui.scanner.DeviceSelected
 import no.nordicsemi.android.kotlin.ble.ui.scanner.ScannerScreen
@@ -70,5 +71,5 @@ val MainScreenDestinations = listOf(
 
 val HRSDestinationId = createSimpleDestination("hrs-destination")
 
-val HRSDestination = defineDestination(HRSDestinationId) { HRSScreen() }
+val HRSDestination = defineDestination(HRSDestinationId) { HRSClientScreen() }
 

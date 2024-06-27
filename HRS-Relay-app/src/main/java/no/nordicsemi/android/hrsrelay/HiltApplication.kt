@@ -29,7 +29,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp

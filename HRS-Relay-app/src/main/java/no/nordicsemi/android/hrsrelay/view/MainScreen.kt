@@ -29,12 +29,11 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay.view
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,29 +43,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import no.nordicsemi.android.common.navigation.NavigationView
 import no.nordicsemi.android.common.permissions.ble.RequireBluetooth
 import no.nordicsemi.android.common.permissions.ble.RequireLocation
 import no.nordicsemi.android.common.theme.view.NordicAppBar
-import no.nordicsemi.android.kotlin.ble.app.server.R
+import no.nordicsemi.android.hrsrelay.viewmodel.MainViewModel
+import no.nordicsemi.android.hrsrelay.HRSDestinationId
+import no.nordicsemi.android.hrsrelay.R
+import no.nordicsemi.android.kotlin.ble.core.data.GattConnectionState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen() {
+
     Scaffold(
         topBar = {
             NordicAppBar(stringResource(id = R.string.app_name))
         },
         containerColor = MaterialTheme.colorScheme.surface,
     ) {
-        Box(modifier = Modifier.padding(it)) {
+        Box(modifier = Modifier.padding(it).padding(top = 16.dp)) {
             RequireBluetooth {
                 RequireLocation {
-                    val viewModel = hiltViewModel<ServerViewModel>()
-                    val state by viewModel.state.collectAsStateWithLifecycle()
+                    val viewModel = hiltViewModel<MainViewModel>()
+                    val hrsServerState by viewModel.stateHrsServer.collectAsStateWithLifecycle()
+                    val hrsClientState by viewModel.stateHrsClient.collectAsStateWithLifecycle()
+                    //val device by viewModel.device.collectAsStateWithLifecycle()
+
+                    //device?.let { DeviceView(it) }
 
                     Column {
                         Spacer(modifier = Modifier.size(16.dp))
@@ -75,7 +82,9 @@ fun MainScreen() {
                             R.drawable.ic_hrs,
                             R.string.hrs_module,
                             R.string.hrs_module_full,
-                            state.isHRSModuleRunning
+                            hrsClientState.connectionState?.state == GattConnectionState.STATE_CONNECTED,
+                            R.string.heart_rate,
+                            hrsClientState.heartRates.lastOrNull().toString()
                         ) {
                             viewModel.openProfile(HRSDestinationId)
                             //viewModel.logEvent(ProfileOpenEvent(Profile.HRS))
@@ -83,14 +92,21 @@ fun MainScreen() {
 
                         Spacer(modifier = Modifier.size(16.dp))
 
-                        AdvertiseView(state = state, viewModel = viewModel)
+                        StateView(state = hrsServerState, viewModel = viewModel)
 
                         Spacer(modifier = Modifier.size(16.dp))
 
-                        StateView(state = state, viewModel = viewModel)
+                        AdvertiseView(state = hrsServerState, viewModel = viewModel)
+
                     }
                 }
             }
         }
     }
+}
+
+@Preview
+@Composable
+private fun Preview() {
+    MainScreen()
 }

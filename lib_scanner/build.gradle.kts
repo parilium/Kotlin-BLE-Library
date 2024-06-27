@@ -42,8 +42,7 @@ dependencies {
     implementation(project(":uiscanner"))
 
     implementation(libs.nordic.navigation)
-    //implementation(libs.nordic.blek.uiscanner)
-    //implementation(libs.nordic.blek.scanner)
+
 
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.iconsExtended)

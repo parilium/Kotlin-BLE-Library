@@ -29,7 +29,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package no.nordicsemi.android.kotlin.ble.server
+package no.nordicsemi.android.hrsrelay.view
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -61,7 +61,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 //import no.nordicsemi.android.nrftoolbox.R
 //import no.nordicsemi.android.common.theme.R
-import no.nordicsemi.android.kotlin.ble.app.server.R
+import no.nordicsemi.android.hrsrelay.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,9 +71,10 @@ fun FeatureButton(
     @StringRes name: Int,
     isRunning: Boolean? = null,
     @StringRes description: Int? = null,
+    info: String = "--",
     onClick: () -> Unit
 ) {
-    OutlinedCard(onClick = onClick) {
+    OutlinedCard(onClick = onClick, modifier = Modifier.padding(horizontal = 16.dp)) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -112,12 +113,14 @@ fun FeatureButton(
 
                     Text(
                         modifier = Modifier.fillMaxWidth(),
-                        text = stringResource(id = it),
+                        text = stringResource(id = it,  if (info.equals("null"))  info else "--"),
                         style = MaterialTheme.typography.labelMedium,
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
+
             }
         }
     }
