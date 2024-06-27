@@ -188,8 +188,4 @@ class MainViewModel @Inject constructor(
 
     }
 
-    suspend fun notifyHRSMeasurement(hrsMeasurement: DataByteArray) {
-        heartRateMeasurementCharacteristic?.setValueAndNotifyClient(hrsMeasurement)
-    }
-
 }
