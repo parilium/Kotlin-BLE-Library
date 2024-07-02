@@ -24,12 +24,12 @@ import no.nordicsemi.android.hrsrelay.viewmodel.MainViewModel
 import no.nordicsemi.android.hrsrelay.R
 
 @Composable
-fun AdvertiseView(state: ServerState, viewModel: MainViewModel) {
+fun AdvertiseView(state: ServerState, viewModel: MainViewModel, connections: List<String?>) {
     OutlinedCard(modifier = Modifier.padding(horizontal = 16.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             SectionTitle(
                 painter = painterResource(id = R.drawable.ic_broadcast),
-                title = stringResource(id = R.string.characteristics)
+                title = stringResource(id = R.string.server)
             )
 
             Spacer(modifier = Modifier.size(8.dp))
@@ -83,6 +83,25 @@ fun AdvertiseView(state: ServerState, viewModel: MainViewModel) {
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.size(4.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(id = R.string.connections),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            connections.forEach{
+                Spacer(modifier = Modifier.size(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = it ?: "--",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
+
         }
     }
 }

@@ -38,11 +38,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import no.nordicsemi.android.common.core.simpleSharedFlow
+import no.nordicsemi.android.kotlin.ble.core.ClientDevice
 import no.nordicsemi.android.kotlin.ble.core.ServerDevice
 import no.nordicsemi.android.kotlin.ble.core.data.GattConnectionState
 import no.nordicsemi.android.kotlin.ble.core.data.GattConnectionStateWithStatus
 import no.nordicsemi.android.kotlin.ble.core.data.util.DataByteArray
 import no.nordicsemi.android.kotlin.ble.profile.hrs.data.HRSData
+import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBluetoothGattConnection
 import no.nordicsemi.android.service.DisconnectAndStopEvent
 import no.nordicsemi.android.service.ServiceManager
 import no.nordicsemi.android.ui.view.StringConst
@@ -58,11 +60,11 @@ class HRSRepository @Inject constructor(
 ) {
     //private var logger: BleLoggerAndLauncher? = null
 
-    private val _hrsClientData = MutableStateFlow(HRSClientState())
-    internal val hrsClientData = _hrsClientData.asStateFlow()
+    private val _hrsClientState = MutableStateFlow(HRSClientState())
+    internal val hrsClientState = _hrsClientState.asStateFlow()
 
-    private val _hrsServerData = MutableStateFlow(ServerState())
-    internal val hrsServerData = _hrsServerData.asStateFlow()
+    private val _hrsServerState = MutableStateFlow(ServerState())
+    internal val hrsServerState = _hrsServerState.asStateFlow()
 
     private val _hrsMeasurementBytes = MutableStateFlow(DataByteArray.from(0x0000))
     val hrsMeasurementBytes = _hrsMeasurementBytes.asStateFlow()
@@ -70,7 +72,7 @@ class HRSRepository @Inject constructor(
     private val _stopEvent = simpleSharedFlow<DisconnectAndStopEvent>()
     internal val stopEvent = _stopEvent.asSharedFlow()
 
-    val isClientRunning = hrsClientData.map { it.connectionState?.state == GattConnectionState.STATE_CONNECTED }
+    val isClientRunning = hrsClientState.map { it.connectionState?.state == GattConnectionState.STATE_CONNECTED }
 
     private var isOnScreen = false
     private var isServiceRunning = false
@@ -91,16 +93,16 @@ class HRSRepository @Inject constructor(
 
     fun launch(device: ServerDevice) {
         //logger = DefaultBleLogger.create(context, stringConst.APP_NAME, "HRS", device.address)
-        _hrsClientData.value = _hrsClientData.value.copy(deviceName = device.name)
+        _hrsClientState.value = _hrsClientState.value.copy(deviceName = device.name)
         serviceManager.startService(HRSClientService::class.java, device)
     }
 
     fun switchZoomIn() {
-        _hrsClientData.value = _hrsClientData.value.copy(zoomIn = !_hrsClientData.value.zoomIn)
+        _hrsClientState.value = _hrsClientState.value.copy(zoomIn = !_hrsClientState.value.zoomIn)
     }
 
-    fun onConnectionStateChanged(connectionState: GattConnectionStateWithStatus?) {
-        _hrsClientData.value = _hrsClientData.value.copy(connectionState = connectionState)
+    fun onClientConnectionStateChanged(connectionState: GattConnectionStateWithStatus?) {
+        _hrsClientState.value = _hrsClientState.value.copy(connectionState = connectionState)
     }
 
     fun onHRSMeasurementBytesChanged(measurement: DataByteArray) {
@@ -108,19 +110,19 @@ class HRSRepository @Inject constructor(
     }
 
     fun onHRSDataChanged(data: HRSData) {
-        _hrsClientData.value = _hrsClientData.value.copy(measurementData = _hrsClientData.value.measurementData + data)
+        _hrsClientState.value = _hrsClientState.value.copy(measurementData = _hrsClientState.value.measurementData + data)
     }
 
     fun onBodySensorLocationChanged(bodySensorLocation: Int) {
-        _hrsClientData.value = _hrsClientData.value.copy(bodySensorLocation = bodySensorLocation)
+        _hrsClientState.value = _hrsClientState.value.copy(bodySensorLocation = bodySensorLocation)
     }
 
     fun onBatteryLevelChanged(batteryLevel: Int) {
-        _hrsClientData.value = _hrsClientData.value.copy(batteryLevel = batteryLevel)
+        _hrsClientState.value = _hrsClientState.value.copy(batteryLevel = batteryLevel)
     }
 
     fun onMissingServices() {
-        _hrsClientData.value = _hrsClientData.value.copy(missingServices = true)
+        _hrsClientState.value = _hrsClientState.value.copy(missingServices = true)
         _stopEvent.tryEmit(DisconnectAndStopEvent())
     }
 
@@ -138,11 +140,15 @@ class HRSRepository @Inject constructor(
 
     private fun clean() {
         //logger = null
-        _hrsClientData.value = HRSClientState()
+        _hrsClientState.value = HRSClientState()
     }
 
     fun setAdvertising(advertisingSate: Boolean) {
-        _hrsServerData.value = _hrsServerData.value.copy(isAdvertising = advertisingSate)
+        _hrsServerState.value = _hrsServerState.value.copy(isAdvertising = advertisingSate)
+    }
+
+    fun onHRSConnectionsChanged(conns: Map<ClientDevice, ServerBluetoothGattConnection>) {
+        _hrsServerState.value = _hrsServerState.value.copy(connections = conns)
     }
 
 }

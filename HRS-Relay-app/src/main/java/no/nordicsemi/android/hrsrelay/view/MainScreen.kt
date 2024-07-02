@@ -78,12 +78,9 @@ fun MainScreen() {
                     Column {
                         Spacer(modifier = Modifier.size(16.dp))
 
-                        FeatureButton(
-                            R.drawable.ic_hrs,
-                            R.string.hrs_module,
-                            R.string.hrs_module_full,
+                        HRSClientView(
+                            hrsClientState.deviceName,
                             hrsClientState.connectionState?.state == GattConnectionState.STATE_CONNECTED,
-                            R.string.heart_rate,
                             hrsClientState.heartRates.lastOrNull().toString()
                         ) {
                             viewModel.openProfile(HRSDestinationId)
@@ -92,11 +89,11 @@ fun MainScreen() {
 
                         Spacer(modifier = Modifier.size(16.dp))
 
-                        StateView(state = hrsServerState, viewModel = viewModel)
-
-                        Spacer(modifier = Modifier.size(16.dp))
-
-                        AdvertiseView(state = hrsServerState, viewModel = viewModel)
+                        val conns = hrsServerState.connections.keys.map{
+                            if (it.hasName) it.name
+                            else it.address
+                        }
+                        AdvertiseView(state = hrsServerState, viewModel = viewModel, connections = conns)
 
                     }
                 }

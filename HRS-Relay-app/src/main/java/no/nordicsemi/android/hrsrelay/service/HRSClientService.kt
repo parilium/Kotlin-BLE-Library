@@ -39,7 +39,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -97,7 +96,7 @@ internal class HRSClientService : NotificationService() {
         client.waitForBonding()
 
         client.connectionStateWithStatus
-            .onEach { repository.onConnectionStateChanged(it) }
+            .onEach { repository.onClientConnectionStateChanged(it) }
             .filterNotNull()
             .onEach { stopIfDisconnected(it) }
             .launchIn(lifecycleScope)

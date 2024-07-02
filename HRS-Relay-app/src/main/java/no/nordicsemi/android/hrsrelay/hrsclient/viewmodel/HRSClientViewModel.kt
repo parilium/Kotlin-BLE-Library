@@ -63,7 +63,7 @@ internal class HRSClientViewModel @Inject constructor(
     private val analytics: AppAnalytics
 ) : ViewModel() {
 
-    val state = repository.hrsClientData
+    val state = repository.hrsClientState
 
     init {
         repository.setOnScreen(true)
@@ -74,7 +74,7 @@ internal class HRSClientViewModel @Inject constructor(
             }
         }
 
-        repository.hrsClientData.onEach {
+        repository.hrsClientState.onEach {
             if (it.connectionState?.state == GattConnectionState.STATE_CONNECTED) {
                 analytics.logEvent(ProfileConnectedEvent(Profile.HRS))
             }

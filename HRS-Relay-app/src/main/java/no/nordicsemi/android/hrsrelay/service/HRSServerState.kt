@@ -31,13 +31,15 @@
 
 package no.nordicsemi.android.hrsrelay.service
 
-import no.nordicsemi.android.kotlin.ble.core.data.util.DataByteArray
+import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBluetoothGattConnection
+import no.nordicsemi.android.kotlin.ble.core.ClientDevice
 
 data class ServerState(
     val isAdvertising: Boolean = false,
     //val beatsPerMin: Int = 60,
     val isButtonPressed: Boolean = false,
-    val refreshToggle: Boolean = false
+    val refreshToggle: Boolean = false,
+    val connections:  Map<ClientDevice, ServerBluetoothGattConnection> = emptyMap()
 ) {
 
     fun copyWithRefresh(): ServerState {

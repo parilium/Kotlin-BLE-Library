@@ -36,12 +36,10 @@ import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.flow.cancellable
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
@@ -51,14 +49,12 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import no.nordicsemi.android.common.navigation.DestinationId
 import no.nordicsemi.android.common.navigation.Navigator
-import no.nordicsemi.android.kotlin.ble.core.data.util.DataByteArray
 import no.nordicsemi.android.kotlin.ble.advertiser.BleAdvertiser
 import no.nordicsemi.android.kotlin.ble.advertiser.callback.OnAdvertisingSetStarted
 import no.nordicsemi.android.kotlin.ble.advertiser.callback.OnAdvertisingSetStopped
 import no.nordicsemi.android.kotlin.ble.core.advertiser.BleAdvertisingConfig
 import no.nordicsemi.android.kotlin.ble.core.advertiser.BleAdvertisingData
 import no.nordicsemi.android.kotlin.ble.core.advertiser.BleAdvertisingSettings
-import no.nordicsemi.android.kotlin.ble.core.data.BleGattPermission
 import no.nordicsemi.android.kotlin.ble.core.data.BleGattProperty
 import no.nordicsemi.android.kotlin.ble.server.main.ServerBleGatt
 import no.nordicsemi.android.kotlin.ble.server.main.ServerConnectionEvent
@@ -67,7 +63,6 @@ import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattCharact
 import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattService
 import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattServiceConfig
 import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattServiceType
-import no.nordicsemi.android.kotlin.ble.server.main.service.ServerBleGattDescriptorConfig
 import java.util.*
 import javax.inject.Inject
 import no.nordicsemi.android.hrsrelay.service.HRSRepository
@@ -95,9 +90,8 @@ class MainViewModel @Inject constructor(
 
     //private val _state = MutableStateFlow(ServerState())
     //val state = _state.asStateFlow()
-    internal val stateHrsClient = repository.hrsClientData
-    internal val stateHrsServer = repository.hrsServerData
-
+    internal val stateHrsClient = repository.hrsClientState
+    internal val stateHrsServer = repository.hrsServerState
 
     //private val _device = MutableStateFlow<ServerDevice?>(null)
     //val device = _device.asStateFlow()
@@ -108,13 +102,15 @@ class MainViewModel @Inject constructor(
 
     private var heartRateMeasurementCharacteristic: ServerBleGattCharacteristic? = null
 
-    private var advertisementJob: Job? = null
+    private var jobAdvertiserFlow: Job? = null
+    private var jobConnectionEventsFlow: Job? = null
+    private var jobMeasurementBytesFlow: Job? = null
 
     fun advertise() {
 
-        advertisementJob = viewModelScope.launch {
+        viewModelScope.launch {
             //Define hr measurement characteristic
-            val heartRateMeasurementCharacteristic = ServerBleGattCharacteristicConfig(
+            val heartRateMeasurementCharacteristicConfig = ServerBleGattCharacteristicConfig(
                 HRSeverSpecifications.HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID,
                 listOf(BleGattProperty.PROPERTY_NOTIFY),
                 emptyList()
@@ -127,7 +123,7 @@ class MainViewModel @Inject constructor(
             val serviceConfig = ServerBleGattServiceConfig(
                 HRSeverSpecifications.HRS_SERVICE_UUID,
                 ServerBleGattServiceType.SERVICE_TYPE_PRIMARY,
-                listOf(heartRateMeasurementCharacteristic)
+                listOf(heartRateMeasurementCharacteristicConfig)
             )
 
             val server = ServerBleGatt.create(context, viewModelScope, serviceConfig)
@@ -145,7 +141,7 @@ class MainViewModel @Inject constructor(
                 )
             )
 
-            advertiser.advertise(advertiserConfig) //Start advertising
+            jobAdvertiserFlow = advertiser.advertise(advertiserConfig) //Start advertising
                 .cancellable()
                 .catch { it.printStackTrace() }
                 .onEach { Log.d("ADVERTISER", "New event: $it") }
@@ -160,32 +156,47 @@ class MainViewModel @Inject constructor(
                     }
                 }.launchIn(viewModelScope)
 
-            server.connectionEvents
-                .mapNotNull { it as? ServerConnectionEvent.DeviceConnected }
+            jobConnectionEventsFlow = server.connectionEvents
+                .mapNotNull {it as? ServerConnectionEvent.DeviceConnected }
                 .map { it.connection }
                 .onEach {
                     it.services.findService(HRSeverSpecifications.HRS_SERVICE_UUID)?.let {
                         setUpServices(it)
                     }
                 }.launchIn(viewModelScope)
+
+            server.connections
+                .onEach { repository.onHRSConnectionsChanged(it) }
+                .launchIn(viewModelScope)
+
+            jobMeasurementBytesFlow = repository.hrsMeasurementBytes.onEach {
+                for ((k, v) in server.connections.value) {
+                    val hrMeasurementCharacteristic = v.services
+                        .findService(HRSeverSpecifications.HRS_SERVICE_UUID)
+                        ?.findCharacteristic(HRSeverSpecifications.HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID)!!
+                    hrMeasurementCharacteristic.setValueAndNotifyClient(it)
+                }
+            }.launchIn(viewModelScope)
         }
     }
 
     fun stopAdvertise() {
-        advertisementJob?.cancelChildren()
+        jobAdvertiserFlow?.cancel()
+        jobConnectionEventsFlow?.cancel()  //just because advertising is off should not mean service should be off
+        jobMeasurementBytesFlow?.cancel()
+
         repository.setAdvertising(false)
+        this.heartRateMeasurementCharacteristic = null
         //_state.value = _state.value.copy(isAdvertising = false)
     }
 
     private fun setUpServices(services: ServerBleGattService) {
         val heartRateMeasurementCharacteristic = services.findCharacteristic(HRSeverSpecifications.HEART_RATE_MEASUREMENT_CHARACTERISTIC_UUID)!!
-
-        repository.hrsMeasurementBytes.onEach {
-            heartRateMeasurementCharacteristic.setValueAndNotifyClient(it)
-        }.launchIn(viewModelScope)
-
         this.heartRateMeasurementCharacteristic = heartRateMeasurementCharacteristic
-
+        /*
+        jobMeasurementBytesFlow = repository.hrsMeasurementBytes.onEach {
+            this.heartRateMeasurementCharacteristic?.setValueAndNotifyClient(it)
+        }.launchIn(viewModelScope)
+        */
     }
-
 }
